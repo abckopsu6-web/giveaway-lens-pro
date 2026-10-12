@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Giveaway Lens Pro</title>
+<style>
+:root{--bg:#0c0c12;--p:#191923;--line:#303044;--t:#f4f3fa;--m:#aaa8bb;--a:#b7a0ff}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 10% 0%,#302044 0,transparent 40%),var(--bg);color:var(--t);font:15px/1.5 system-ui,sans-serif}
+.wrap{max-width:900px;margin:auto;padding:18px 14px 45px}
+.top{font-weight:850;font-size:19px;margin-bottom:28px}
+.card{background:var(--p);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:15px}
+.hero{text-align:center;margin:25px 0}
+.hero h1{font-size:clamp(32px,7vw,48px);line-height:1.1}
+.hero span{color:var(--a)}
+p,.hint,small{color:var(--m)}
+label{display:block;font-weight:700;margin:10px 0 7px}
+input,textarea{width:100%;background:#0d0d15;border:1px solid #3a3a50;border-radius:11px;color:var(--t);padding:13px;font:inherit}
+textarea{min-height:120px}
+button{background:linear-gradient(100deg,#b7a0ff,#f5a3d0);color:#20162b;font:inherit;font-weight:800;border:0;border-radius:11px;padding:12px 15px;margin-top:10px;cursor:pointer;width:100%}
+.error{color:#ffabb9}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mini{background:#12121b;border:1px solid var(--line);border-radius:12px;padding:12px;overflow-wrap:anywhere}
+.rule{padding:10px 0;border-bottom:1px solid var(--line)}
+.rule small{display:block}
+.result{display:none}
+@media(max-width:560px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<div class="top">✦ Giveaway Lens Pro · Gemini</div>
+<section class="hero">
+<h1>Tempel link.<br><span>AI bedah aturannya.</span></h1>
+<p>Analisis persyaratan, deadline, akun yang harus diikuti, dan ide komentar.</p>
+</section>
+<section class="card">
+<label>Link Instagram</label>
+<input id="url" placeholder="https://www.instagram.com/p/...">
+<label>Caption (opsional jika link bisa dibaca)</label>
+<textarea id="caption" placeholder="Tempel caption giveaway jika link tidak bisa dibaca..."></textarea>
+<button id="go">Scan & Analisis</button>
+<p class="hint">Jika Instagram membatasi akses link, tempel caption secara manual.</p>
+<div id="err" class="error"></div>
+</section>
+<section class="card result" id="res">
+<h2>Hasil analisis</h2>
+<p id="summary"></p>
+<div class="grid">
+<div class="mini"><small>Deadline</small><div id="deadline"></div></div>
+<div class="mini"><small>Pengumuman</small><div id="winner"></div></div>
+<div class="mini"><small>Akun</small><div id="accounts"></div></div>
+<div class="mini"><small>Hashtag</small><div id="hashtags"></div></div>
+</div>
+<h3>Checklist</h3><div id="requirements"></div>
+<h3>Aturan komentar</h3><div id="comments"></div>
+<h3>Kelayakan & diskualifikasi</h3><div id="eligibility"></div>
+<h3>Risiko & ketidakpastian</h3><div id="warnings"></div>
+<label>Saran komentar</label>
+<textarea id="suggestion"></textarea>
+<button id="copy">Salin komentar</button>
+<p class="hint">Jangan berikan password/OTP. Checklist tidak membuktikan follow, like, atau repost sudah dilakukan.</p>
+</section>
+</main>
+<script>
+const $=x=>document.getElementById(x);
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function list(id,items,check=false){
+$(id).innerHTML=(items||[]).length?items.map((v,i)=>{
+let o=typeof v==='string'?{task:v}:v;
+return `<div class="rule">${check?`<label><input type="checkbox" style="width:auto"> ${esc(o.task)}</label>`:'• '+esc(o.task||v)}<small>${esc(o.details||'')}</small></div>`
+}).join(''):'<p>Tidak ditemukan.</p>'
+}
+$('go').onclick=async()=>{
+$('err').textContent='';
+$('go').disabled=true;
+$('go').textContent='Menganalisis…';
+try{
+let r=await fetch('/api/analyze',{
+method:'POST',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({url:$('url').value.trim(),caption:$('caption').value.trim()})
+});
+let d=await r.json();
+if(!r.ok)throw Error(d.error||'Gagal menganalisis');
+let x=d.result||{};
+$('res').style.display='block';
+$('summary').textContent=(d.mode==='gemini'?'Gemini AI aktif. ':'Mode '+d.mode+'. ')+(x.summary||'');
+$('deadline').textContent=x.deadline||'Tidak ditemukan';
+$('winner').textContent=x.winner_announcement||'Tidak ditemukan';
+$('accounts').textContent=(x.accounts_to_follow||[]).join(', ')||'Tidak ditemukan';
+$('hashtags').textContent=(x.hashtags||[]).join(' ')||'Tidak ditemukan';
+list('requirements',x.requirements,true);
+list('comments',x.comment_rules);
+list('eligibility',[...(x.eligibility||[]),...(x.disqualification||[]).map(s=>'Diskualifikasi: '+s)]);
+list('warnings',[...(x.red_flags||[]),...(x.uncertainties||[])]);
+$('suggestion').value=x.comment_suggestion||'';
+$('res').scrollIntoView({behavior:'smooth'});
+}catch(e){$('err').textContent=e.message}
+finally{$('go').disabled=false;$('go').textContent='Scan & Analisis'}
+};
+$('copy').onclick=async()=>{
+await navigator.clipboard.writeText($('suggestion').value);
+$('copy').textContent='Tersalin ✓';
+setTimeout(()=>$('copy').textContent='Salin komentar',1300)
+}
+</script>
+</body>
+</html>
