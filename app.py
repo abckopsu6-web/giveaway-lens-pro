@@ -28,7 +28,7 @@ Jangan menyatakan follow/like/repost sudah dilakukan. Bedakan aturan eksplisit d
 Jangan membuat komentar yang mengklaim pengalaman pribadi palsu, jangan menyarankan spam, akun ganda, atau manipulasi giveaway."""
 
 def extract_caption(url):
-    if not re.match(r"^https?://(www\\.)?instagram\\.com/(p|reel|tv)/", url, re.I):
+    if not re.match(r"^https?://(www\.)?instagram\.com/(p|reel|tv)/", url, re.I):
         raise ValueError("Masukkan link postingan Instagram publik yang valid (/p/, /reel/, atau /tv/).")
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36"}
     r = requests.get(url, headers=headers, timeout=12, allow_redirects=True)
